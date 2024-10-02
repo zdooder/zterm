@@ -1,3 +1,5 @@
+#include <conio.h>
+
 #define SCREEN_BASE 0x0400
 #define CURSOR_X (unsigned char*)0x00ca
 #define CURSOR_Y (unsigned char*)0x00c9
@@ -76,7 +78,6 @@ void scroll() {
     __asm__("sta %l,x", SCREEN_BASE + ( 40 * 24 ) -1);
     __asm__("dex");
     __asm__("bne %g", loop2);
-    *(CURSOR_X)=0;
     *(CURSOR_Y)=24;
 }
 
@@ -85,17 +86,23 @@ void print(const char* str) {
   while(*str) {
     char c = *str++;
     switch(c) {
-      case '\r': 
-        *(CURSOR_X)=0; 
-        break;
       case '\n': 
+        *(CURSOR_X)=0;
+        break;
+      case '\r': 
         if ( ++(*CURSOR_Y) > 24 ) {
           scroll();
         }; 
         break;
+      case '\x08':
+        --*(CURSOR_X);
+        print(" ");
+        --*(CURSOR_X);
+        break;
       default:
         *d++ = petscii_to_screen[c];
         if ( ++(*CURSOR_X) > 39 ) {
+          *CURSOR_X=0;
           if ( ++(*CURSOR_Y) > 24 ) {
             scroll();
           }
@@ -105,13 +112,16 @@ void print(const char* str) {
 }
 
 int main() {
+  char in[2] = {0,0};
   clearscr();
-  *(CURSOR_Y)=23;
   print("zTerm 0.0 - (C) 2024 by zDooder\r\n\n");
-  print("zdooder@gmail.com");
-  print("\n\n\n\n\n\n\n\n\n");
-  print("This is a test of scrolling.");
-  print("does it work?\r\n");
-  print("Let's find out!");
+  cursor(1);
+  gotoxy(*CURSOR_X,*CURSOR_Y);
+  while((in[0] = cgetc()) != 0x03) {
+    cursor(0);
+    print(in);
+    cursor(1);
+    gotoxy(*CURSOR_X,*CURSOR_Y);
+  }
   return 0;
 }
